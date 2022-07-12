@@ -13,9 +13,11 @@ public abstract class CommandController {
         return getQualifiedCommand(String.format("rmdir %s", directory));
     }
 
-    public String[] changeDirectory(String directory)  {
-        return getQualifiedCommand(String.format("cd %s", directory));
-    }
+    // We can't write a command that changes directory. Whoever controls the ProcessBuilder controls the directory.
+    // CommandController just gets qualified commands depending on OS.
+//    public String[] changeDirectory(String directory)  {
+//        return getQualifiedCommand(String.format("cd %s", directory));
+//    }
 
     protected String[] getQualifiedCommand(String command) {
         return new String[]{ getShell(), getCommandFlag(), command};
