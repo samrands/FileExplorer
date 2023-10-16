@@ -47,7 +47,7 @@ public class TDDModelTest {
         assertThat(stateAfterGoingUp.currentDirectory()).endsWith("test");
         assertThat(stateAfterGoingUp.directoryContents().stream().map(File::getName).toList()).asList().contains("test1", "test2", "test3");
 
-        model.setShowHidden(true);
+        model.toggleShowHidden();
 
         FileState stateWithHidden = model.getState();
         assertThat(stateWithHidden.directoryContents().stream().map(File::getName).toList()).asList().contains("test1", "test2", "test3", ".test4");

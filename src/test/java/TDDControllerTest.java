@@ -28,14 +28,14 @@ public class TDDControllerTest {
 
         assertThat(state.currentDirectory()).endsWith("test");
 
-        controller.checkShowHidden(true);
+        controller.checkShowHidden();
 
         state = controller.getState();
         assertThat(state.showHidden()).isTrue();
         assertThat(state.directoryContents().stream().map(File::getName).toList())
                 .asList().contains(".test4");
 
-        controller.checkShowHidden(false);
+        controller.checkShowHidden();
         state = controller.getState();
         assertThat(state.showHidden()).isFalse();
         assertThat(state.directoryContents().stream().map(File::getName).toList())

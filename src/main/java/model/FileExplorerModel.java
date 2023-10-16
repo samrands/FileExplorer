@@ -56,8 +56,8 @@ public class FileExplorerModel {
         if (parent != null) currentLocation = parent;
     }
 
-    public void setShowHidden(boolean arg) {
-        this.showHidden = arg;
+    public void toggleShowHidden() {
+        this.showHidden = !showHidden;
     }
 
 }
