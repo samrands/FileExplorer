@@ -1,57 +1,45 @@
 package controller;
 
-import model.FileExplorerModel;
-import model.FileState;
-import view.FileExplorerView;
+import model.ExplorerModel;
+import view.FileState;
 
 import java.io.File;
-import java.util.LinkedList;
-import java.util.List;
 
 public class FileExplorerController {
 
-    private final FileExplorerModel model;
-    private final List<FileExplorerView> views = new LinkedList<>();
+    private final ExplorerModel model;
 
-    public FileExplorerController(FileExplorerModel model) {
+    public FileExplorerController(
+        ExplorerModel model) {
         this.model = model;
     }
 
-    public void fileClicked(File clickedFile) {
+    public void clickOnFile(File clickedFile) throws Exception {
         System.out.printf("Clicked file: %s%n", clickedFile.getAbsolutePath());
-        model.enterDirectory(clickedFile);
+        model.changeDirectory(clickedFile.getAbsolutePath());
     }
 
     public FileState getState() {
-        return model.getState();
+        return new FileState(
+            model.getCurrentDir().getAbsolutePath(), 
+            model.getChildren(), 
+            model.isShowHidden());
     }
 
-    public void goUp() {
+    public void goUp() throws Exception {
         System.out.println("Going up directory");
-        model.goUp();
+        model.moveUpDirectory();
     }
 
-    public void checkShowHidden() {
+    public void checkShowHidden(boolean isSelected) {
         System.out.println("Toggling hidden");
-        model.toggleShowHidden();
+        model.setShowHidden(isSelected);
     }
 
-    public void addView(FileExplorerView view) {
-        views.add(view);
-    }
+    public void changeCurrentDirectory(String currentDirectory) throws Exception {
+        System.out.printf("Changing directory to %s", currentDirectory);
 
-    public void act(Runnable action) {
-        action.run();
-
-        refreshState();
-    }
-
-    public void refreshState() {
-        views.forEach(view -> view.refreshState(model.getState()));
-    }
-
-    public void showUI() {
-        views.forEach(FileExplorerView::showUI);
+        model.changeDirectory(currentDirectory);
     }
 
 }

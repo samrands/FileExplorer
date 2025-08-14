@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import view.FileState;
+
 public class FileExplorerModel {
 
     private File currentLocation;
@@ -56,8 +58,8 @@ public class FileExplorerModel {
         if (parent != null) currentLocation = parent;
     }
 
-    public void toggleShowHidden() {
-        this.showHidden = !showHidden;
+    public void setShowHidden(boolean showHidden) {
+        this.showHidden = showHidden;
     }
 
 }

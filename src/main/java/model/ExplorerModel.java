@@ -1,28 +1,44 @@
 package model;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class ExplorerModel {
     private File currentDir;
+    private boolean showHidden;
 
-    public ExplorerModel() {
-        currentDir = new File(System.getProperty("user.dir"));
+    public ExplorerModel(String currentDirectory, boolean showHidden) {
+        currentDir = new File(currentDirectory);
+        this.showHidden = showHidden;
     }
 
     public File getCurrentDir() {
         return currentDir;
     }
 
-    public File[] getChildren() {
-        return currentDir.listFiles();
+    public List<File> getChildren() {
+        File[] filesAtLocation = currentDir.listFiles();
+
+        List<File> files = new ArrayList<>();
+
+        if (filesAtLocation != null) {
+            files = Arrays
+                        .stream(filesAtLocation)
+                        .filter(file -> !file.isHidden() || showHidden)
+                        .toList();
+        }
+
+        return files;
     }
 
     public void changeDirectory(String newDirectoryPath) throws Exception {
         File newDirectory = new File(newDirectoryPath);
 
-        if (!newDirectory.exists()) throw new Exception("Directory does not exist.");
+        if (!newDirectory.exists()) throw new Exception("Directory %s does not exist.".formatted(newDirectoryPath));
 
-        if (!newDirectory.isDirectory()) throw new Exception("Not a directory.");
+        if (!newDirectory.isDirectory()) throw new Exception("%s is not a directory.".formatted(newDirectoryPath));
 
         currentDir = newDirectory;
     }
@@ -47,5 +63,13 @@ public class ExplorerModel {
         boolean isDeleted = toBeDeleted.delete();
 
         if (!isDeleted) throw new Exception("Unable to delete directory.");
+    }
+
+    public void setShowHidden(boolean showHidden) {
+        this.showHidden = showHidden;
+    }
+
+    public boolean isShowHidden() {
+        return this.showHidden;
     }
 }

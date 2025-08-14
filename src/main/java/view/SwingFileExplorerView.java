@@ -1,17 +1,33 @@
 package view;
 
-import controller.FileExplorerController;
-import model.FileState;
+import view.function.ChangeCurrentDirectory;
+import view.function.FileClicker;
+import view.function.StateChanger;
+import view.function.UpMover;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Container;
+import java.awt.Dimension;
 import java.io.File;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class SwingFileExplorerView implements FileExplorerView {
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
+
+public class SwingFileExplorerView {
     private static final String TITLE = "Swing File Explorer";
     private static final String GO_UP = "Go up";
     private static final String HIDDEN_TEXT = "Show Hidden Files";
-    private static final String CANNOT_ENTER_FILE_WARNING = "You can only enter directories. %s is a file.";
     private static final int TOP_BAR_X_START = 20;
     private static final int TOP_BAR_Y_START = 20;
     private static final int UP_BUTTON_WIDTH = 50;
@@ -20,111 +36,148 @@ public class SwingFileExplorerView implements FileExplorerView {
     private static final int FILE_BUTTON_HEIGHT = 50;
     private static final int CURR_DIR_LABEL_X_START = TOP_BAR_X_START + UP_BUTTON_WIDTH + 5;
     private static final int CURR_DIR_LABEL_WIDTH = 200;
-    private final FileExplorerController controller;
+    private static final int FRAME_HEIGHT = 400;
+    private static final int FRAME_WIDTH = 600;
     private final JFrame frame;
-    private final JLabel currentDirectoryLabel;
+    private final JTextField currentDirectoryLabel;
     private final JButton goUpButton;
     private final JCheckBox showHiddenCheckbox;
-    private final Container filesContainer;
+    private final JScrollPane filesScrollPane;
+    private final JPanel filesContainer;
+    private final JPanel topPane;
+    private final Supplier<FileState> refreshStateCallback;
+    private final Consumer<Boolean> changeHidden; 
+    private final ChangeCurrentDirectory changeCurrentDirectory;
+    private final FileClicker fileClicker;
+    private final UpMover moveUp;
+    private final String appName;
 
-    public SwingFileExplorerView(FileExplorerController controller) {
-        this.controller = controller;
+    // Instead of tying the View implementation to the Controller, let's have it take the callback functions in the constructor.
+    // If it's large enough we can put it in a container, but I don't think that's really all that useful.
+    public SwingFileExplorerView(
+        String appName,
+        Supplier<FileState> refreshStateCallback,
+        Consumer<Boolean> changeHidden, 
+        ChangeCurrentDirectory changeCurrentDirectory,
+        UpMover moveUp,
+        FileClicker fileClicker
+    ) {
+        this.appName = appName;
+        this.refreshStateCallback = refreshStateCallback;
+        this.changeHidden = changeHidden;
+        this.changeCurrentDirectory = changeCurrentDirectory;
+        this.moveUp = moveUp;
+        this.fileClicker = fileClicker;
 
         frame = createFrame();
 
         currentDirectoryLabel = createCurrentDirectoryLabel();
         goUpButton = createUpButton();
         showHiddenCheckbox = createShowHiddenCheckbox();
-        filesContainer = new Container();
+        filesContainer = new JPanel();
+        filesScrollPane = new JScrollPane(filesContainer);
+        filesScrollPane.setPreferredSize(new Dimension(400, 400));
+        topPane = new JPanel();
+        topPane.setLayout(new BoxLayout(topPane, BoxLayout.LINE_AXIS));
+        topPane.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
+        topPane.add(Box.createHorizontalGlue());
+        topPane.add(goUpButton);
+        topPane.add(Box.createRigidArea(new Dimension(10, 0)));
+        topPane.add(currentDirectoryLabel);
+        topPane.add(Box.createRigidArea(new Dimension(10, 0)));
+        topPane.add(showHiddenCheckbox);
 
-        frame.add(currentDirectoryLabel);
-        frame.add(goUpButton);
-        frame.add(showHiddenCheckbox);
-        frame.add(filesContainer);
+        refreshState();
 
-        // Let's think about how we want this to look.
-        // At the top we want a back (or up) arrow that takes us up one directory, then a label that shows the current
-        // directory. This should probably be in a box. Then finally a checkbox to show hidden files.
-        // Then, I want to actually list the files. There might be different file layouts we could pick from, so it would
-        // make sense to try and decouple the creating the components from this class.
-        // For now, let's do the classic approach. A square button for each file. The hard part is going to be wrapping them
-        // and then adding a scroll bar.
-
-        // How should creation of this object work? We create the class with the controller. We should initialize everything.
-        // This means that we create each frame or component or whatever that we actually need and add it to the frame.
-        // We save these in the view object, and update them as necessary. We initialize current directory to null (or
-        // empty), show hidden to false, and the file list to just be an empty component.
-
-        // Then, we start the program by getting the state from the model and sending it in here. Then users interact
-        // with the UI, that goes to the ActionListener here which forwards that to the controller, model, back to controller
-        // then that refreshes the state.
-
-        // So, what needs to be done right now? We need to create each of the components as variables and initialize them
-        // Then we need to complete the refreshState method to update those components
-        // Then we need to complete the actionlistener logic in controller to refresh state after every change
-        // Actions:
-        //   Go up (takes none), enter directory (takes one argument), check show hidden
-        // Somehow we have to pass the function to controller, in enter directory's case, we have to pass the argument.
-        // So we could just pass null. Well, maybe I can just pass a runnable and include the argument in the lambda.
+        addComponentsToFrame();
     }
 
-    public JButton createUpButton() {
+    private void addComponentsToFrame() {
+        Container framePane = frame.getContentPane();
+        framePane.add(topPane, BorderLayout.PAGE_START);
+        framePane.add(filesScrollPane, BorderLayout.CENTER);
+    }
+
+    private JButton createUpButton() {
         return new JButton(GO_UP) {{
             setBounds(TOP_BAR_X_START, TOP_BAR_Y_START, UP_BUTTON_WIDTH, TOP_BAR_HEIGHT);
             addActionListener(event -> {
-                controller.act(controller::goUp);
-                // How do we refresh the state after going up? Maybe we can have a generic method in the controller that
-                // takes in an event and then refreshes state afterward. Or we just have a call to refresh state after
-                // every method in controller, but that seems bad. So we need a method in controller that takes an ActionEvent
-                // and determines which action to take.
-                // Another idea, we use some functional programming. We pass in the update method in controller. Then controller
-                //
+                changeState(moveUp::move);
             });
         }};
     }
 
-    public JLabel createCurrentDirectoryLabel() {
-        return new JLabel() {{
+    private JTextField createCurrentDirectoryLabel() {
+        return new JTextField() {{
             setBounds(CURR_DIR_LABEL_X_START, TOP_BAR_Y_START, CURR_DIR_LABEL_WIDTH, TOP_BAR_HEIGHT);
-        }};
-    }
-
-    public JCheckBox createShowHiddenCheckbox() {
-        return new JCheckBox(HIDDEN_TEXT) {{
-            addActionListener(checked -> {
-                controller.act(controller::checkShowHidden);
+            addActionListener(event -> {
+                changeState(() -> changeCurrentDirectory.change(getText()));
             });
         }};
     }
 
-    public JFrame createFrame() {
+    private JCheckBox createShowHiddenCheckbox() {
+        return new JCheckBox(HIDDEN_TEXT) {{
+            addActionListener(event -> {
+                changeState(() -> changeHidden.accept(isSelected()));
+            });
+        }};
+    }
+
+    private JFrame createFrame() {
         return new JFrame(TITLE) {{
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setMinimumSize(new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
         }};
     }
 
-    @Override
     public void showUI() {
         frame.pack();
         frame.setVisible(true);
     }
 
-    @Override
-    public void refreshState(FileState state) {
-        currentDirectoryLabel.setText(state.currentDirectory());
-
-        state.directoryContents().forEach(file -> filesContainer.add(createFileButton(file)));
-    }
-
-    public JButton createFileButton(File file) {
+    private JButton createFileButton(File file) {
         // Future: add different icons based on whether directory or file
+        System.out.println("Creating button with width %s and height %s".formatted(FILE_BUTTON_WIDTH, FILE_BUTTON_HEIGHT));
         return new JButton(file.getName()) {{
             setSize(FILE_BUTTON_WIDTH, FILE_BUTTON_HEIGHT);
             addActionListener(event -> {
-                if (file.isDirectory()) controller.act(() -> controller.fileClicked(file));
-                else JOptionPane.showMessageDialog(frame, CANNOT_ENTER_FILE_WARNING);
+                changeState(() -> fileClicker.click(file));
             });
         }};
+    }
+
+    private void changeState(StateChanger callback) {
+        try {
+            callback.change();
+
+            refreshState();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError(e.getMessage());
+        }
+    }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(frame, message, appName, JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void refreshState() {
+        FileState currentState = refreshStateCallback.get();
+
+        applyState(currentState);
+    }
+
+    public void applyState(FileState state) {
+        currentDirectoryLabel.setText(state.currentDirectory());
+
+        filesContainer.removeAll();
+        state.directoryContents().forEach(file -> filesContainer.add(createFileButton(file)));
+
+        showHiddenCheckbox.setSelected(state.showHidden());
+
+        frame.revalidate();
+        frame.repaint();
     }
 
 }

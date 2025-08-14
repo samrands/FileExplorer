@@ -1,5 +1,6 @@
 import model.FileExplorerModel;
-import model.FileState;
+import view.FileState;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -14,6 +15,11 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 public class TDDModelTest {
 
+    public static final String LAST_DIR_NAME = "test-dir";
+    public static final String ENCLOSING_DIR_NAME = "src/test/resources/controller-test/";
+    public static final String SRC_TEST_RESOURCES_CONTROLLER_TEST_TEST_DIR = 
+            Paths.get(ENCLOSING_DIR_NAME, LAST_DIR_NAME).toString();
+
     @BeforeClass
     public static void setUp() throws IOException {
         if (System.getProperty("os.name").contains("Windows")) {
@@ -24,12 +30,12 @@ public class TDDModelTest {
 
     @Test
     public void testEnterDirectory() {
-        File initialFile = new File("src/test/resources/test/");
+        File initialFile = new File(SRC_TEST_RESOURCES_CONTROLLER_TEST_TEST_DIR);
         FileExplorerModel model = new FileExplorerModel(initialFile);
 
         FileState state = model.getState();
 
-        assertThat(state.currentDirectory()).endsWith("test");
+        assertThat(state.currentDirectory()).endsWith(LAST_DIR_NAME);
         assertThat(state.directoryContents().size()).isEqualTo(3);
         assertThat(state.directoryContents().stream().map(File::getName).toList()).asList().contains("test1", "test2", "test3");
 
@@ -44,10 +50,10 @@ public class TDDModelTest {
 
         model.goUp();
         FileState stateAfterGoingUp = model.getState();
-        assertThat(stateAfterGoingUp.currentDirectory()).endsWith("test");
+        assertThat(stateAfterGoingUp.currentDirectory()).endsWith(LAST_DIR_NAME);
         assertThat(stateAfterGoingUp.directoryContents().stream().map(File::getName).toList()).asList().contains("test1", "test2", "test3");
 
-        model.toggleShowHidden();
+        model.setShowHidden(true);
 
         FileState stateWithHidden = model.getState();
         assertThat(stateWithHidden.directoryContents().stream().map(File::getName).toList()).asList().contains("test1", "test2", "test3", ".test4");

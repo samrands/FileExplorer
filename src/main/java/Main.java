@@ -1,21 +1,27 @@
 import controller.FileExplorerController;
-import model.FileExplorerModel;
-import view.FileExplorerView;
+import model.ExplorerModel;
 import view.SwingFileExplorerView;
 
 import java.io.File;
 
 public class Main {
+    private static final String APP_NAME = "File Explorer";
 
     public static void main(String[] args) {
-        File initialFile = new File("src/test/resources/test/");
-        FileExplorerModel model = new FileExplorerModel(initialFile);
-        FileExplorerController controller = new FileExplorerController(model);
-        FileExplorerView view = new SwingFileExplorerView(controller);
+        File initialFile = new File(System.getProperty("user.dir"));
 
-        controller.addView(view);
-        controller.refreshState();
-        controller.showUI();
+        ExplorerModel model = new ExplorerModel(initialFile.getAbsolutePath(), false);
+        FileExplorerController controller = new FileExplorerController(model);
+        SwingFileExplorerView view = new SwingFileExplorerView(
+            APP_NAME,
+            controller::getState, 
+            controller::checkShowHidden,
+            controller::changeCurrentDirectory,
+            controller::goUp,
+            controller::clickOnFile
+        );
+
+        view.showUI();
     }
 
 }
